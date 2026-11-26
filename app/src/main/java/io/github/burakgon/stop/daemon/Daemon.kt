@@ -604,7 +604,8 @@ internal class Daemon(private val selfPackage: String) {
      * also makes the app unusable until it is restored, so the tool used is remembered.
      */
     private fun block(packageName: String): Boolean {
-        val mode = WorkMode.fromCode(config?.mode)
+        val mode = config?.rules?.get(packageName)?.action?.let { WorkMode.fromCode(it) }
+            ?: WorkMode.fromCode(config?.mode)
         if (mode == WorkMode.SUSPEND_STOP) return blockAndSuspend(packageName)
         val mechanism = if (mode == WorkMode.FREEZE) freeze(packageName) else null
         if (mode == WorkMode.FREEZE && mechanism == null) {

@@ -18,6 +18,7 @@ import io.github.burakgon.stop.data.AppIcons
 import io.github.burakgon.stop.data.SystemRoles
 import io.github.burakgon.stop.model.InstalledApp
 import io.github.burakgon.stop.model.RuleMode
+import io.github.burakgon.stop.model.WorkMode
 import io.github.burakgon.stop.receiver.NotificationActionReceiver
 import io.github.burakgon.stop.ui.MainActivity
 import io.github.burakgon.stop.ui.newapp.NewAppActivity
@@ -63,8 +64,12 @@ class Notifications(private val context: Context, private val icons: AppIcons) {
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 )
             )
-            .addAction(0, context.getString(R.string.action_stop_in_background), decision(app.packageName, RuleMode.BLOCK, id))
-            .addAction(0, context.getString(R.string.action_let_it_run), decision(app.packageName, RuleMode.ALLOW, id))
+            // Same four choices as the in-app card, so the notification can settle the question
+            // without opening anything.
+            .addAction(0, context.getString(R.string.action_let_it_run), decision(app.packageName, RuleMode.ALLOW, null, id))
+            .addAction(0, context.getString(R.string.action_stop_in_background), decision(app.packageName, RuleMode.BLOCK, WorkMode.STOP, id))
+            .addAction(0, context.getString(R.string.app_action_suspend), decision(app.packageName, RuleMode.BLOCK, WorkMode.SUSPEND_STOP, id))
+            .addAction(0, context.getString(R.string.app_action_freeze), decision(app.packageName, RuleMode.BLOCK, WorkMode.FREEZE, id))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
@@ -128,11 +133,15 @@ class Notifications(private val context: Context, private val icons: AppIcons) {
 
     fun cancelPaused() = manager.cancel(ID_PAUSED)
 
-    private fun decision(packageName: String, mode: RuleMode, notificationId: Int): PendingIntent =
+    /**
+     * Each action needs its own request code or FLAG_UPDATE_CURRENT would replace the earlier ones
+     * with the last extras: the code therefore also carries the per-app work mode.
+     */
+    private fun decision(packageName: String, mode: RuleMode, action: WorkMode?, notificationId: Int): PendingIntent =
         PendingIntent.getBroadcast(
             context,
-            notificationId * 2 + mode.ordinal,
-            NotificationActionReceiver.intent(context, packageName, mode),
+            notificationId * 8 + mode.ordinal * 4 + (action?.ordinal ?: 0),
+            NotificationActionReceiver.intent(context, packageName, mode, action),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 

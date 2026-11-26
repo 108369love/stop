@@ -10,6 +10,7 @@ import io.github.burakgon.stop.model.InstalledApp
 import io.github.burakgon.stop.model.RuleMode
 import io.github.burakgon.stop.model.StopEvent
 import io.github.burakgon.stop.model.StopReason
+import io.github.burakgon.stop.model.WorkMode
 import io.github.burakgon.stop.ui.dayStarts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -103,6 +104,37 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun decide(packageName: String, mode: RuleMode) {
         viewModelScope.launch { graph.decide(listOf(packageName), mode) }
+    }
+
+    /** Runs it: the app joins the allowed list and Stop never touches it. */
+    fun decideRun(packageName: String) {
+        viewModelScope.launch { graph.decide(listOf(packageName), RuleMode.ALLOW) }
+    }
+
+    /** Blocks it and kills the running copy right away. */
+    fun decideStop(packageName: String) {
+        viewModelScope.launch {
+            graph.decide(listOf(packageName), RuleMode.BLOCK)
+            graph.daemon.call { it.forceStopNow(packageName) }
+        }
+    }
+
+    /** Blocks it with the suspend work mode and suspends the running copy now. */
+    fun decideSuspend(packageName: String) {
+        viewModelScope.launch {
+            graph.settings.setAppAction(packageName, WorkMode.SUSPEND_STOP)
+            graph.decide(listOf(packageName), RuleMode.BLOCK)
+            graph.daemon.call { it.suspendNow(packageName) }
+        }
+    }
+
+    /** Blocks it and disables it for good (the freeze work mode). */
+    fun decideDisable(packageName: String) {
+        viewModelScope.launch {
+            graph.settings.setAppAction(packageName, WorkMode.FREEZE)
+            graph.decide(listOf(packageName), RuleMode.BLOCK)
+            graph.daemon.call { it.setFrozen(packageName, true) }
+        }
     }
 
     fun stopNow(packageName: String) {

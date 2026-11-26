@@ -103,6 +103,7 @@ class ConfigSync(
                     uid = app.uid,
                     blocked = rule.blocked && rule.packageName !in protected,
                     graceMs = rule.graceSeconds?.let { it * 1_000L },
+                    action = settings.appActions[rule.packageName]?.code,
                 )
             }.toMap(),
             protectedPackages = protected,

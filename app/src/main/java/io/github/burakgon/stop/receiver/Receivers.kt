@@ -7,6 +7,7 @@ import io.github.burakgon.stop.core.ShizukuCheck
 import io.github.burakgon.stop.daemon.DaemonProtocol
 import io.github.burakgon.stop.graph
 import io.github.burakgon.stop.model.RuleMode
+import io.github.burakgon.stop.model.WorkMode
 import kotlinx.coroutines.launch
 
 /** Woken by the daemon when apps are installed or removed, even while Stop isn't running. */
@@ -32,11 +33,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val packageName = intent.getStringExtra(EXTRA_PACKAGE) ?: return
         val mode = intent.getStringExtra(EXTRA_MODE)?.let { runCatching { RuleMode.valueOf(it) }.getOrNull() } ?: return
+        val action = intent.getStringExtra(EXTRA_ACTION)?.takeIf { it.isNotEmpty() }?.let { WorkMode.fromCode(it) }
         val graph = context.graph
         val pending = goAsync()
         graph.scope.launch {
             try {
+                // Deciding from the notification also records how this app should be limited, so the
+                // pick survives and the in-app row shows the same thing.
+                graph.settings.setAppAction(packageName, if (mode == RuleMode.ALLOW) null else action)
                 graph.decide(listOf(packageName), mode)
+                if (mode == RuleMode.BLOCK) graph.daemon.call { it.stopNow(arrayOf(packageName)) }
             } finally {
                 pending.finish()
             }
@@ -46,11 +52,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         private const val EXTRA_PACKAGE = "package"
         private const val EXTRA_MODE = "mode"
+        private const val EXTRA_ACTION = "action"
 
-        fun intent(context: Context, packageName: String, mode: RuleMode): Intent =
+        fun intent(context: Context, packageName: String, mode: RuleMode, action: WorkMode?): Intent =
             Intent(context, NotificationActionReceiver::class.java)
                 .putExtra(EXTRA_PACKAGE, packageName)
                 .putExtra(EXTRA_MODE, mode.name)
+                .putExtra(EXTRA_ACTION, action?.code.orEmpty())
     }
 }
 

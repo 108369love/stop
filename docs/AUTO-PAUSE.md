@@ -1,4 +1,4 @@
-# 自动暂停（Auto Pause）2.0.4 — 分支说明
+# 自动暂停（Auto Pause）2.1.0 — 分支说明
 
 本分支基于上游 `v1.0.0` 之后，做了中文化并加了一组「让被限制的应用真的起不来」的能力。
 包名保持 `io.github.burakgon.stop` 不变，可与上游版本互相覆盖安装（但签名不同，正式替换前需卸载）。
@@ -14,7 +14,7 @@
 | 模式 | 行为 |
 | --- | --- |
 | `idle` 空闲 | 只做额外限制（电池/待机），不杀进程 |
-| `stop` 强行停止 | 离开宽限期后 `forceStop` |
+| `stop` 后台停止 | 离开宽限期后 `forceStop` |
 | `suspend_stop` 强停挂起 | 先 `pm suspend` 再 `forceStop`，应用无法自行在后台起来 |
 | `freeze` 冻结停用 | 直接 `pm disable-user`（必要时退到 hide），图标变灰/消失，记录实际生效方式 |
 
@@ -59,3 +59,26 @@ setPackagesSuspendedAsUser(String[], boolean, PersistableBundle, PersistableBund
 环境里复现，把 `gradle/libs.versions.toml` 与 `compileSdk` 降了一档，并关闭了 `aidl` 特性
 （缺可执行的 `aidl` 二进制），`daemon/IStopDaemon.java` 与 `IDaemonListener.java` 是手写的
 AIDL 生成物，接口与 `*.aidl` 保持一致。
+
+## 每个应用单独选限制方式（2.0.6 起）
+
+除了全局工作模式，单个应用还可以有自己的限制方式，存在 DataStore 的 `app_actions`
+（`package=code;package=code`），随 `DaemonConfig.Rule.action` 下发给守护进程；
+守护进程里 `block()` 先看单应用、没有再回落到全局。
+
+- 应用列表每行右侧是「限制方式」按钮，对话框五项：允许后台运行 / 跟随全局 / 后台停止 /
+  强停挂起 / 冻结停用。
+- 行内状态行显示**实际会生效**的方式（`limitMode = action ?: globalMode`），不再显示「今日已停止 N 次」。
+- 应用详情页同样四个按钮（运行 / 停止 / 挂起 / 停用）。
+- 新装应用的通知与首页卡片也是同一组选择，选完立刻写入并执行一次。
+
+## 宽限期（2.0.7 / 2.0.8 起）
+
+设置 → 宽限期：预设 立即 / 30 秒 / 1 分钟 / 5 分钟 / 15 分钟 / 1 小时，另有「自定义…」，
+自定义可分别填小时与分钟（存 `小时 × 3600 + 分钟 × 60`）。
+
+## 设置页（2.1.0 起）
+
+保护开关换成和首页一致的「暂停 / 恢复」按钮；文案带后端名称：
+开启「Shizuku · ADB 功能 · 离开时，以及它们试图自行运行时停止」，
+暂停「Shizuku · ADB 功能 · 离开应用时，不会限制应用后台运行。」。

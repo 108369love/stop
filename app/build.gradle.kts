@@ -14,7 +14,7 @@ val keystoreProperties = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 
-val appVersionName = "2.0.5"
+val appVersionName = "2.1.0"
 
 base {
     archivesName = "stop-$appVersionName"
@@ -30,7 +30,7 @@ android {
         // Developed and tested against Android 17 (API 37) devices; targeting 37 can follow once
         // its behavior changes have been checked.
         targetSdk = 36
-        versionCode = 7
+        versionCode = 12
         versionName = appVersionName
     }
 

@@ -183,8 +183,8 @@
     <string name="settings_title">Settings</string>
     <string name="settings_section_protection">Protection</string>
     <string name="settings_protection">Stop blocked apps</string>
-    <string name="settings_protection_on">When you leave them, and when they try to run on their own</string>
-    <string name="settings_protection_off">Paused. Blocked apps can run in the background.</string>
+    <string name="settings_protection_on">Shizuku · ADB — stopped when you leave, and when they try to run on their own</string>
+    <string name="settings_protection_off">Shizuku · ADB — paused, leaving an app does not limit its background</string>
     <string name="settings_grace">Grace period</string>
     <string name="settings_grace_summary">Blocked apps may keep running for %1$s after you leave them</string>
     <string name="settings_grace_summary_none">Blocked apps are stopped right after you leave them</string>
@@ -307,7 +307,7 @@
     <string name="work_mode_title">Work mode</string>
     <string name="work_mode_body">How Stop handles a blocked app, all through Shizuku. Force stop only kills it, so it can start again. Force stop + suspend stops it and suspends it (pm suspend) so it cannot come back on its own. Freeze + disable turns the app off (pm disable-user) and kills it, so it cannot be opened or started until you restore it by hand.</string>
     <string name="mode_idle">Idle · restrictions only</string>
-    <string name="mode_stop">Shizuku · force stop</string>
+    <string name="mode_stop">Shizuku · stop in background</string>
     <string name="mode_suspend_stop">Shizuku · force stop + suspend</string>
     <string name="mode_freeze">Shizuku · freeze + disable</string>
     <string name="bloatware_title">Preinstalled cleanup</string>
@@ -340,4 +340,20 @@
     <string name="settings_restore_frozen">Restore frozen apps</string>
     <string name="settings_restore_frozen_summary">Make apps frozen with disable, hide or suspend usable again. Rules stay as they are.</string>
     <string name="settings_restore_frozen_done">Frozen apps restored</string>
+    <string name="action_run">Run</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_hold">Suspend</string>
+    <string name="action_disable">Disable</string>
+    <string name="app_action_title">How to limit it</string>
+    <string name="app_action_summary">Pick what Stop does to this app when it is limited. Following the global mode uses the work mode from Settings.</string>
+    <string name="app_action_follow">Follow the global mode</string>
+    <string name="app_action_stop">Stop in background</string>
+    <string name="app_action_suspend">Stop + suspend</string>
+    <string name="app_action_freeze">Freeze + disable</string>
+    <string name="app_action_open">Limit</string>
+    <string name="app_action_allow">Allow in background</string>
+    <string name="grace_custom">Custom…</string>
+    <string name="grace_custom_hours">Hours</string>
+    <string name="grace_custom_minutes">Minutes</string>
+    <string name="app_action_idle">Extra limits only</string>
 </resources>

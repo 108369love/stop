@@ -40,8 +40,28 @@ class SettingsRepository(context: Context) {
             prefs[SHOW_SYSTEM_APPS] = next.showSystemApps
             prefs[THEME_MODE] = next.themeMode.name
             prefs[DYNAMIC_COLOR] = next.dynamicColor
+            prefs[APP_ACTIONS] = encodeActions(next.appActions)
         }
     }
+
+    /** Picks the work mode for one app; `null` puts it back on the global mode. */
+    suspend fun setAppAction(packageName: String, mode: WorkMode?) = update { current ->
+        val next = current.appActions.toMutableMap()
+        if (mode == null) next.remove(packageName) else next[packageName] = mode
+        current.copy(appActions = next)
+    }
+
+    private fun encodeActions(actions: Map<String, WorkMode>): String =
+        actions.entries.joinToString(";") { "${it.key}=${it.value.code}" }
+
+    private fun decodeActions(raw: String): Map<String, WorkMode> = raw
+        .split(';')
+        .mapNotNull { entry ->
+            val at = entry.indexOf('=')
+            if (at <= 0) return@mapNotNull null
+            entry.substring(0, at) to WorkMode.fromCode(entry.substring(at + 1))
+        }
+        .toMap()
 
     private fun Preferences.toSettings(): AppSettings {
         val defaults = AppSettings()
@@ -57,6 +77,7 @@ class SettingsRepository(context: Context) {
             showSystemApps = this[SHOW_SYSTEM_APPS] ?: defaults.showSystemApps,
             themeMode = this[THEME_MODE]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: defaults.themeMode,
             dynamicColor = this[DYNAMIC_COLOR] ?: defaults.dynamicColor,
+            appActions = this[APP_ACTIONS]?.let { decodeActions(it) } ?: defaults.appActions,
         )
     }
 
@@ -72,5 +93,6 @@ class SettingsRepository(context: Context) {
         val SHOW_SYSTEM_APPS = booleanPreferencesKey("show_system_apps")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val APP_ACTIONS = stringPreferencesKey("app_actions")
     }
 }

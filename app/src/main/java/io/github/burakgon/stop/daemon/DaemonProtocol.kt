@@ -53,7 +53,13 @@ data class DaemonConfig(
     /** Shown by the system when this mode freezes by suspending the app. */
     val suspendDialog: String = "",
 ) {
-    data class Rule(val uid: Int, val blocked: Boolean, val graceMs: Long? = null)
+    data class Rule(
+        val uid: Int,
+        val blocked: Boolean,
+        val graceMs: Long? = null,
+        /** Per-app work mode code; null means "follow [DaemonConfig.mode]". */
+        val action: String? = null,
+    )
 
     fun toJson(): String = JSONObject().apply {
         put("enabled", enabled)
@@ -69,6 +75,7 @@ data class DaemonConfig(
                     put("uid", rule.uid)
                     put("blocked", rule.blocked)
                     rule.graceMs?.let { put("graceMs", it) }
+                    rule.action?.let { put("action", it) }
                 })
             }
         })
@@ -87,6 +94,7 @@ data class DaemonConfig(
                     uid = r.getInt("uid"),
                     blocked = r.getBoolean("blocked"),
                     graceMs = if (r.has("graceMs")) r.getLong("graceMs") else null,
+                    action = if (r.has("action")) r.getString("action") else null,
                 )
             }
             val protectedJson = o.optJSONArray("protected") ?: JSONArray()

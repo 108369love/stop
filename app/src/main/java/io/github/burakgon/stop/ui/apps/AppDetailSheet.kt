@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,9 +43,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -67,6 +66,7 @@ import io.github.burakgon.stop.R
 import io.github.burakgon.stop.data.SystemRoles
 import io.github.burakgon.stop.graph
 import io.github.burakgon.stop.model.GracePeriods
+import io.github.burakgon.stop.model.WorkMode
 import io.github.burakgon.stop.ui.durationLabel
 import io.github.burakgon.stop.ui.reasonLabel
 import io.github.burakgon.stop.ui.shortcut.FreezeShortcuts
@@ -117,17 +117,32 @@ fun AppDetailSheet(
                 val reason = item.integration?.takeIf { it.keepsRunning }?.let { integrationText(it) }
                 Notice(Icons.Rounded.Shield, reason ?: stringResource(R.string.detail_protected))
             } else {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = item.blocked,
-                        onClick = { viewModel.setBlocked(packageName, true) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    ) { Text(stringResource(R.string.detail_mode_block), maxLines = 1) }
-                    SegmentedButton(
+                // Same four choices as the home screen's new-app card, so one app never needs a
+                // different mental model depending on where you opened it.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DetailAction(
+                        label = stringResource(R.string.action_run),
                         selected = !item.blocked,
-                        onClick = { viewModel.setBlocked(packageName, false) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    ) { Text(stringResource(R.string.detail_mode_allow), maxLines = 1) }
+                        onClick = { viewModel.choose(packageName, allow = true, action = null) },
+                    )
+                    DetailAction(
+                        label = stringResource(R.string.action_stop),
+                        selected = item.blocked && item.action == WorkMode.STOP,
+                        onClick = { viewModel.choose(packageName, allow = false, action = WorkMode.STOP) },
+                    )
+                    DetailAction(
+                        label = stringResource(R.string.action_hold),
+                        selected = item.blocked && item.action == WorkMode.SUSPEND_STOP,
+                        onClick = { viewModel.choose(packageName, allow = false, action = WorkMode.SUSPEND_STOP) },
+                    )
+                    DetailAction(
+                        label = stringResource(R.string.action_disable),
+                        selected = item.blocked && item.action == WorkMode.FREEZE,
+                        onClick = { viewModel.choose(packageName, allow = false, action = WorkMode.FREEZE) },
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -318,3 +333,24 @@ private fun integrationText(integration: SystemRoles.Integration): String = stri
         SystemRoles.Integration.WALLPAPER -> R.string.detail_integration_wallpaper
     }
 )
+
+/** One of the four per-app actions; the current one is filled, the others are outlined. */
+@Composable
+private fun RowScope.DetailAction(label: String, selected: Boolean, onClick: () -> Unit) {
+    val content = @Composable {
+        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    if (selected) {
+        FilledTonalButton(
+            onClick = onClick,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+        ) { content() }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+        ) { content() }
+    }
+}

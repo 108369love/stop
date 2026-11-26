@@ -176,8 +176,8 @@
     <string name="settings_title">设置</string>
     <string name="settings_section_protection">保护</string>
     <string name="settings_protection">停止已限制的应用</string>
-    <string name="settings_protection_on">离开时，以及它们试图自行运行时</string>
-    <string name="settings_protection_off">已暂停。已限制的应用可以在后台运行。</string>
+    <string name="settings_protection_on">Shizuku · ADB 功能 · 离开时，以及它们试图自行运行时停止</string>
+    <string name="settings_protection_off">Shizuku · ADB 功能 · 离开应用时，不会限制应用后台运行。</string>
     <string name="settings_grace">宽限期</string>
     <string name="settings_grace_summary">离开后，已限制的应用还可以继续运行 %1$s</string>
     <string name="settings_grace_summary_none">离开后，已限制的应用会立即被停止</string>
@@ -297,7 +297,7 @@
     <string name="work_mode_title">工作模式</string>
     <string name="work_mode_body">Stop 用哪种方式处理被限制的应用，全部通过 Shizuku 执行。强行停止只是杀掉进程，应用随时能再打开；强停挂起在杀进程前先挂起（pm suspend），应用无法自行在后台起来，点开时由系统拦下；冻结停用会直接把应用停用（pm disable-user）并杀掉进程，图标变灰、点不开，要你手动恢复才能再用。</string>
     <string name="mode_idle">空闲 · 仅额外限制</string>
-    <string name="mode_stop">Shizuku · 强行停止</string>
+    <string name="mode_stop">Shizuku · 后台停止</string>
     <string name="mode_suspend_stop">Shizuku · 强停挂起</string>
     <string name="mode_freeze">Shizuku · 冻结停用</string>
     <string name="bloatware_title">预装应用清理</string>
@@ -330,4 +330,20 @@
     <string name="settings_restore_frozen">恢复被冻结的应用</string>
     <string name="settings_restore_frozen_summary">把被停用、隐藏或暂停的应用恢复成可用，限制规则不变。</string>
     <string name="settings_restore_frozen_done">已恢复被冻结的应用</string>
+    <string name="action_run">运行</string>
+    <string name="action_stop">停止</string>
+    <string name="action_hold">挂起</string>
+    <string name="action_disable">停用</string>
+    <string name="app_action_title">限制方式</string>
+    <string name="app_action_summary">选择这个应用被限制时 Stop 的做法。跟随全局时用设置里的工作模式。</string>
+    <string name="app_action_follow">跟随全局工作模式</string>
+    <string name="app_action_stop">后台停止</string>
+    <string name="app_action_idle">仅额外限制</string>
+    <string name="app_action_suspend">强停挂起</string>
+    <string name="app_action_freeze">冻结停用</string>
+    <string name="app_action_open">限制方式</string>
+    <string name="app_action_allow">允许后台运行</string>
+    <string name="grace_custom">自定义…</string>
+    <string name="grace_custom_hours">小时</string>
+    <string name="grace_custom_minutes">分钟</string>
 </resources>

@@ -5,12 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,6 +42,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -74,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.burakgon.stop.R
 import io.github.burakgon.stop.data.SystemRoles
 import io.github.burakgon.stop.model.RuleMode
+import io.github.burakgon.stop.model.WorkMode
 import io.github.burakgon.stop.ui.apps.AppsViewModel.Filter
 import io.github.burakgon.stop.ui.components.AppIcon
 import io.github.burakgon.stop.ui.graphViewModel
@@ -204,6 +208,7 @@ fun AppsScreen(
                         onToggle = { viewModel.setBlocked(item.app.packageName, it) },
                         onThaw = { viewModel.thaw(item.app.packageName) },
                         onUnsuspend = { viewModel.unsuspend(item.app.packageName) },
+                        onChoose = { allow, mode -> viewModel.choose(item.app.packageName, allow, mode) },
                         onClick = { selected = item.app.packageName },
                         modifier = Modifier.animateItem(),
                     )
@@ -320,9 +325,21 @@ private fun AppRow(
     onToggle: (Boolean) -> Unit,
     onThaw: () -> Unit,
     onUnsuspend: () -> Unit,
+    onChoose: (Boolean, WorkMode?) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var pickingAction by remember { mutableStateOf(false) }
+    // What the row says under the name: for a limited app that is the limit itself, not a tally —
+    // "how often it was stopped" is history, "how it is limited" is the setting you just picked.
+    val modeLabel = stringResource(
+        when (item.limitMode) {
+            WorkMode.IDLE -> R.string.app_action_idle
+            WorkMode.STOP -> R.string.app_action_stop
+            WorkMode.SUSPEND_STOP -> R.string.app_action_suspend
+            WorkMode.FREEZE -> R.string.app_action_freeze
+        }
+    )
     val status = when {
         item.app.packageName == SystemRoles.SHIZUKU_PACKAGE -> stringResource(R.string.app_status_needed_by_stop)
         item.isProtected -> stringResource(R.string.app_status_protected)
@@ -330,9 +347,7 @@ private fun AppRow(
         item.suspended -> stringResource(R.string.app_status_suspended)
         item.isNew && item.blocked -> stringResource(R.string.app_status_new_blocked)
         item.isNew -> stringResource(R.string.app_status_new_allowed)
-        item.blocked && item.stopsToday > 0 ->
-            pluralStringResource(R.plurals.app_status_stops_today, item.stopsToday, item.stopsToday)
-        item.blocked -> stringResource(R.string.app_status_blocked)
+        item.blocked -> modeLabel
         else -> stringResource(R.string.app_status_allowed)
     }
     ListItem(
@@ -366,8 +381,8 @@ private fun AppRow(
             )
         },
         trailingContent = {
-            // A frozen app can't be limited or allowed until it is usable again, so the switch
-            // would do nothing: it is replaced by the one action that has an effect.
+            // One control instead of a switch: it says how the app is limited, and opening it is
+            // where both "allow it" and the three ways to block it live.
             when {
                 item.frozen -> OutlinedButton(
                     onClick = onThaw,
@@ -381,10 +396,63 @@ private fun AppRow(
                 ) {
                     Text(stringResource(R.string.action_unsuspend))
                 }
-                else -> Switch(checked = item.blocked, onCheckedChange = onToggle, enabled = !item.isProtected)
+                else -> OutlinedButton(
+                    onClick = { pickingAction = true },
+                    enabled = !item.isProtected,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                ) {
+                    Text(stringResource(R.string.app_action_open))
+                }
             }
         },
     )
+    if (pickingAction) {
+        // allow = true means "leave it alone"; otherwise the second value is the per-app mode
+        // (null = follow the global work mode).
+        val options = listOf(
+            Triple(true, null, R.string.app_action_allow),
+            Triple(false, null, R.string.app_action_follow),
+            Triple(false, WorkMode.STOP, R.string.app_action_stop),
+            Triple(false, WorkMode.SUSPEND_STOP, R.string.app_action_suspend),
+            Triple(false, WorkMode.FREEZE, R.string.app_action_freeze),
+        )
+        AlertDialog(
+            onDismissRequest = { pickingAction = false },
+            title = { Text(stringResource(R.string.app_action_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(R.string.app_action_summary),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    options.forEach { (allow, mode, label) ->
+                        val selected = if (allow) !item.blocked else item.blocked && item.action == mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    pickingAction = false
+                                    onChoose(allow, mode)
+                                }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = selected, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(stringResource(label))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { pickingAction = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable

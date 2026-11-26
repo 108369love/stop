@@ -8,6 +8,7 @@ import io.github.burakgon.stop.data.db.PackageCount
 import io.github.burakgon.stop.model.AppRule
 import io.github.burakgon.stop.model.InstalledApp
 import io.github.burakgon.stop.model.RuleMode
+import io.github.burakgon.stop.model.WorkMode
 import io.github.burakgon.stop.ui.daysBefore
 import io.github.burakgon.stop.ui.dayStarts
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,7 +39,13 @@ class AppsViewModel(private val graph: AppGraph) : ViewModel() {
         val recordedFrozen: Boolean = false,
         /** The framework reports it as suspended right now. */
         val recordedSuspended: Boolean = false,
+        /** Per-app work mode; null follows the global one. */
+        val action: WorkMode? = null,
+        val globalMode: WorkMode = WorkMode.STOP,
     ) {
+        /** What Stop will actually do when this app is limited. */
+        val limitMode: WorkMode get() = action ?: globalMode
+
         val blocked: Boolean get() = blockable && rule?.blocked == true
 
         private val blockable: Boolean get() = !isProtected
@@ -107,7 +114,7 @@ class AppsViewModel(private val graph: AppGraph) : ViewModel() {
         val all = apps.values
             .filter { it.packageName != graph.context.packageName }
             .filter { settings.showSystemApps || it.isUserFacing || rules[it.packageName]?.blocked == true }
-            .map { app -> item(app, rules, roles, counts, frozen, suspended) }
+            .map { app -> item(app, rules, roles, counts, frozen, suspended, settings.appActions, settings.workMode) }
         val matching = if (query.isBlank()) all else {
             val q = query.trim()
             all.filter { it.app.label.contains(q, ignoreCase = true) || it.app.packageName.contains(q, ignoreCase = true) }
@@ -131,6 +138,22 @@ class AppsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setGrace(packageName: String, seconds: Int?) {
         viewModelScope.launch { graph.rules.setGrace(packageName, seconds) }
+    }
+
+    /**
+     * The single decision behind the row's control: [allow] leaves the app alone, otherwise it is
+     * blocked with [action] as its per-app mode (`null` = follow the global work mode). A blocked
+     * app is limited again right away so the change is visible without waiting for a tick.
+     */
+    fun choose(packageName: String, allow: Boolean, action: WorkMode?) {
+        viewModelScope.launch {
+            graph.settings.setAppAction(packageName, if (allow) null else action)
+            graph.decide(listOf(packageName), if (allow) RuleMode.ALLOW else RuleMode.BLOCK)
+            if (!allow) graph.daemon.call { it.stopNow(arrayOf(packageName)) }
+            graph.apps.refresh()
+            refreshFrozen()
+            refreshSuspended()
+        }
     }
 
     fun setShowSystem(show: Boolean) {
@@ -187,6 +210,8 @@ class AppsViewModel(private val graph: AppGraph) : ViewModel() {
         counts: Map<String, PackageCount>,
         frozen: Set<String>,
         suspended: Set<String>,
+        actions: Map<String, WorkMode>,
+        globalMode: WorkMode,
     ) = Item(
         app = app,
         rule = rules[app.packageName],
@@ -195,6 +220,8 @@ class AppsViewModel(private val graph: AppGraph) : ViewModel() {
         stopsToday = counts[app.packageName]?.count ?: 0,
         recordedFrozen = app.packageName in frozen,
         recordedSuspended = app.packageName in suspended,
+        action = actions[app.packageName],
+        globalMode = globalMode,
     )
 
     private data class Quint(

@@ -12,7 +12,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -136,8 +135,10 @@ fun HomeScreen(
                         UndecidedRow(
                             packageName = app.packageName,
                             label = app.label,
-                            onBlock = { viewModel.decide(app.packageName, RuleMode.BLOCK) },
-                            onAllow = { viewModel.decide(app.packageName, RuleMode.ALLOW) },
+                            onRun = { viewModel.decideRun(app.packageName) },
+                            onStop = { viewModel.decideStop(app.packageName) },
+                            onSuspend = { viewModel.decideSuspend(app.packageName) },
+                            onDisable = { viewModel.decideDisable(app.packageName) },
                         )
                     }
                 }
@@ -245,7 +246,14 @@ private fun StatTile(value: Int, label: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun UndecidedRow(packageName: String, label: String, onBlock: () -> Unit, onAllow: () -> Unit) {
+private fun UndecidedRow(
+    packageName: String,
+    label: String,
+    onRun: () -> Unit,
+    onStop: () -> Unit,
+    onSuspend: () -> Unit,
+    onDisable: () -> Unit,
+) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AppIcon(packageName, size = 40.dp)
@@ -260,14 +268,27 @@ private fun UndecidedRow(packageName: String, label: String, onBlock: () -> Unit
             }
         }
         Spacer(Modifier.height(12.dp))
-        FlowRow(
+        // Four equal columns so the choices read as one row of peers, not as one big plus one small.
+        Row(
             modifier = Modifier.fillMaxWidth().padding(start = 56.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilledTonalButton(onClick = onBlock) { Text(stringResource(R.string.action_stop_in_background)) }
-            OutlinedButton(onClick = onAllow) { Text(stringResource(R.string.action_let_it_run)) }
+            PendingAction(stringResource(R.string.action_run), onRun, Modifier.weight(1f))
+            PendingAction(stringResource(R.string.action_stop), onStop, Modifier.weight(1f))
+            PendingAction(stringResource(R.string.action_hold), onSuspend, Modifier.weight(1f))
+            PendingAction(stringResource(R.string.action_disable), onDisable, Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+private fun PendingAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+    ) {
+        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

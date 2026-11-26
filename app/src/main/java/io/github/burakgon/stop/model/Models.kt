@@ -85,6 +85,8 @@ data class AppSettings(
     val allowOngoing: Boolean = false,
     val askOnInstall: Boolean = true,
     val newAppMode: RuleMode = RuleMode.BLOCK,
+    /** Per-app override of [workMode]; apps without an entry follow the global mode. */
+    val appActions: Map<String, WorkMode> = emptyMap(),
     val extraRestrictions: Boolean = false,
     val showSystemApps: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,

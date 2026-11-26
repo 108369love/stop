@@ -7,7 +7,14 @@ import android.os.Build
 import android.provider.Settings
 import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -47,6 +56,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
@@ -103,11 +113,30 @@ fun SettingsScreen(contentPadding: PaddingValues) {
         ) {
             item { Header(stringResource(R.string.settings_section_protection)) }
             item {
-                SwitchRow(
-                    title = stringResource(R.string.settings_protection),
-                    summary = stringResource(if (s.protectionEnabled) R.string.settings_protection_on else R.string.settings_protection_off),
-                    checked = s.protectionEnabled,
-                    onCheckedChange = { on -> viewModel.update { it.copy(protectionEnabled = on) } },
+                // Same control as the home card: one button that says what it will do (pause or
+                // resume), instead of a switch whose two states both look "on".
+                ListItem(
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    headlineContent = { Text(stringResource(R.string.settings_protection)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                if (s.protectionEnabled) R.string.settings_protection_on else R.string.settings_protection_off,
+                            ),
+                        )
+                    },
+                    trailingContent = {
+                        OutlinedButton(
+                            onClick = { viewModel.update { it.copy(protectionEnabled = !it.protectionEnabled) } },
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (s.protectionEnabled) R.string.action_pause else R.string.action_resume,
+                                ),
+                            )
+                        }
+                    },
                 )
             }
             item {
@@ -288,13 +317,9 @@ fun SettingsScreen(contentPadding: PaddingValues) {
             onSelect = { mode -> viewModel.update { it.copy(workMode = mode) } },
             onDismiss = { dialog = null },
         )
-        Dialog.GRACE -> ChoiceDialog(
-            title = stringResource(R.string.settings_grace),
-            message = stringResource(R.string.settings_grace_dialog_body),
-            options = GracePeriods.options,
-            selected = s.graceSeconds,
-            label = { durationLabel(it) },
-            onSelect = { seconds -> viewModel.update { it.copy(graceSeconds = seconds) } },
+        Dialog.GRACE -> GraceDialog(
+            current = s.graceSeconds,
+            onPick = { seconds -> viewModel.update { it.copy(graceSeconds = seconds) } },
             onDismiss = { dialog = null },
         )
         Dialog.NEW_APPS -> ChoiceDialog(
@@ -446,5 +471,97 @@ private fun openUrl(context: Context, url: String) {
     try {
         context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
     } catch (_: ActivityNotFoundException) {
+    }
+}
+
+/**
+ * Grace period picker with a free-form option: the presets cover the common cases, the text field
+ * is there for anyone who wants 2 minutes or 45.
+ */
+@Composable
+private fun GraceDialog(current: Int, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    var custom by remember { mutableStateOf(current !in GracePeriods.options) }
+    var hours by remember { mutableStateOf((current / 3_600).toString()) }
+    var minutes by remember { mutableStateOf(((current % 3_600) / 60).toString()) }
+    val customSeconds = runCatching {
+        hours.toInt() * 3_600 + minutes.toInt() * 60
+    }.getOrNull()?.takeIf { it > 0 }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_grace)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    stringResource(R.string.settings_grace_dialog_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                for (option in GracePeriods.options) {
+                    GraceOption(selected = !custom && current == option, label = durationLabel(option)) {
+                        onPick(option)
+                        onDismiss()
+                    }
+                }
+                GraceOption(selected = custom, label = stringResource(R.string.grace_custom)) {
+                    custom = true
+                }
+                if (custom) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = hours,
+                            onValueChange = { input -> hours = input.filter { it.isDigit() }.take(3) },
+                            label = { Text(stringResource(R.string.grace_custom_hours)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                        OutlinedTextField(
+                            value = minutes,
+                            onValueChange = { input -> minutes = input.filter { it.isDigit() }.take(2) },
+                            label = { Text(stringResource(R.string.grace_custom_minutes)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (custom) {
+                TextButton(
+                    onClick = {
+                        customSeconds?.let(onPick)
+                        onDismiss()
+                    },
+                    enabled = customSeconds != null,
+                ) { Text(stringResource(R.string.action_done)) }
+            } else {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            }
+        },
+        dismissButton = if (custom) {
+            { TextButton(onClick = { custom = false }) { Text(stringResource(R.string.action_cancel)) } }
+        } else {
+            null
+        },
+    )
+}
+
+@Composable
+private fun GraceOption(selected: Boolean, label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(8.dp))
+        Text(label)
     }
 }
