@@ -6,7 +6,7 @@
 <li>Apps that start on their own are stopped again within about a second</li>
 <li>Never in your way: apps on screen, flows they opened (camera, payment pages), Android Auto and apps left on top while the phone is locked are left alone</li>
 <li>Asks you about every newly installed app, right from the notification</li>
-<li>Play Store updates keep working: nothing is disabled, suspended, hidden or hibernated</li>
+<li>Four ways to limit an app, global or per app: stop it, stop + suspend it, freeze it by disabling it, or only add extra restrictions</li>
 <li>Activity log with a 7-day overview</li>
 <li>Quick Settings tile and launcher shortcut to stop all blocked apps at once</li>
 <li>Optional extra restrictions through Android's own battery settings</li>

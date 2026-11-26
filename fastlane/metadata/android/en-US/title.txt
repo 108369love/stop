@@ -1,1 +1,1 @@
-Stop: Background App Blocker
+Auto Pause: Background App Blocker
